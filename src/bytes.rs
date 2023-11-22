@@ -94,6 +94,10 @@ impl Bytes {
     pub fn is_numeric(&self) -> bool {
         matches!(self, Self::Ch(c) if c.is_numeric())
     }
+
+    pub fn char(self) -> char {
+        char::from(self)
+    }
 }
 
 /// Buffered UTF-8 iterator
