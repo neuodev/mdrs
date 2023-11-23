@@ -1,7 +1,8 @@
-use crate::bytes::CharIterator;
+use crate::bytes::{Bytes, CharIterator};
 use std::str::FromStr;
+use std::string::ToString;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
     String(String),
     Hash(usize),
@@ -15,8 +16,47 @@ pub enum Token {
     OpeningBracket,
     ClosingBracket,
     AngleBracket,
+    ExclamationMark,
     Whitespace,
     EOF,
+}
+
+impl Token {
+    pub fn is_string(&self) -> bool {
+        matches!(self, Token::String(..))
+    }
+
+    pub fn is_hash(&self) -> bool {
+        matches!(self, Token::Hash(..))
+    }
+
+    pub fn is_asterisk(&self) -> bool {
+        matches!(self, Token::Asterisk(..))
+    }
+
+    pub fn is_backticks(&self) -> bool {
+        matches!(self, Token::Backticks(..))
+    }
+
+    pub fn is_dash(&self) -> bool {
+        matches!(self, Token::Dash(..))
+    }
+
+    pub fn is_underscore(&self) -> bool {
+        matches!(self, Token::Underscore(..))
+    }
+
+    pub fn is_url(&self) -> bool {
+        matches!(self, Token::Url(..))
+    }
+
+    pub fn is_whitespace(&self) -> bool {
+        matches!(self, Token::Whitespace)
+    }
+
+    pub fn is_eof(&self) -> bool {
+        matches!(self, Token::EOF)
+    }
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct ParseTokenError;
@@ -38,10 +78,33 @@ impl FromStr for Token {
             '[' => Token::OpeningBracket,
             ']' => Token::ClosingBracket,
             '>' => Token::AngleBracket,
+            '!' => Token::ExclamationMark,
             _ => todo!(),
         };
 
         Ok(token)
+    }
+}
+
+impl ToString for Token {
+    fn to_string(&self) -> String {
+        match self {
+            Token::String(s) => s.clone(),
+            Token::Hash(n) => "#".repeat(*n),
+            Token::Asterisk(n) => "*".repeat(*n),
+            Token::Backticks(n) => "`".repeat(*n),
+            Token::Dash(n) => "-".repeat(*n),
+            Token::Underscore(n) => "_".repeat(*n),
+            Token::Url(s) => s.to_string(),
+            Token::OpeningBracket => '['.to_string(),
+            Token::ClosingBracket => ']'.to_string(),
+            Token::OpeningParenthesis => '('.to_string(),
+            Token::ClosingParenthesis => '('.to_string(),
+            Token::AngleBracket => '>'.to_string(),
+            Token::ExclamationMark => '!'.to_string(),
+            Token::Whitespace => ' '.to_string(),
+            Token::EOF => String::new(),
+        }
     }
 }
 
@@ -55,8 +118,13 @@ impl<'a> Tokenizer<'a> {
     }
 
     pub fn consume(&mut self) -> Token {
-        let char = self.chars.current().char();
+        let current = self.chars.current();
 
+        if current == Bytes::Eof {
+            return Token::EOF;
+        }
+
+        let char = current.char();
         match char {
             '#' | '*' | '`' | '_' | '-' => self.consume_delim(),
             '(' | ')' | '[' | ']' => {
@@ -89,6 +157,7 @@ impl<'a> Tokenizer<'a> {
                 || char == '#'
                 || char == '*'
                 || char == '_'
+                || char == '!'
             {
                 break;
             }
