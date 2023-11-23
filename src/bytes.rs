@@ -176,7 +176,7 @@ impl CharIterator {
         }
 
         for _ in 0..skip_len {
-            self.read_char();
+            self.read();
         }
     }
 
@@ -304,7 +304,7 @@ impl CharIterator {
     }
 
     /// Reads a character and increases the current pointer, or read EOF as None
-    pub(crate) fn read_char(&mut self) -> Bytes {
+    pub(crate) fn read(&mut self) -> Bytes {
         // Return none if we already have read EOF
         if self.has_read_eof {
             return Eof;
@@ -334,12 +334,12 @@ impl CharIterator {
     }
 
     /// Reads the current character
-    pub(crate) fn current_char(&self) -> Bytes {
+    pub(crate) fn current(&self) -> Bytes {
         self.look_ahead(0)
     }
 
     /// Reads the next character
-    pub(crate) fn next_char(&self) -> Bytes {
+    pub(crate) fn next(&self) -> Bytes {
         self.look_ahead(1)
     }
 
@@ -402,26 +402,26 @@ mod test {
         assert_eq!(chars.length, 3);
         assert!(!chars.eof());
         assert_eq!(chars.chars_left(), 3);
-        assert_eq!(chars.read_char(), Ch('f'));
+        assert_eq!(chars.read(), Ch('f'));
         assert_eq!(chars.chars_left(), 2);
         assert!(!chars.eof());
-        assert_eq!(chars.read_char(), Ch('👽'));
+        assert_eq!(chars.read(), Ch('👽'));
         assert!(!chars.eof());
         assert_eq!(chars.chars_left(), 1);
-        assert_eq!(chars.read_char(), Ch('f'));
+        assert_eq!(chars.read(), Ch('f'));
         assert!(chars.eof());
         assert_eq!(chars.chars_left(), 0);
 
         chars.reset();
         chars.set_encoding(Encoding::ASCII);
         assert_eq!(chars.length, 6);
-        assert_eq!(chars.read_char(), Ch('f'));
-        assert_eq!(chars.read_char(), Ch('?'));
-        assert_eq!(chars.read_char(), Ch('?'));
-        assert_eq!(chars.read_char(), Ch('?'));
-        assert_eq!(chars.read_char(), Ch('?'));
-        assert_eq!(chars.read_char(), Ch('f'));
-        assert!(matches!(chars.read_char(), Eof));
+        assert_eq!(chars.read(), Ch('f'));
+        assert_eq!(chars.read(), Ch('?'));
+        assert_eq!(chars.read(), Ch('?'));
+        assert_eq!(chars.read(), Ch('?'));
+        assert_eq!(chars.read(), Ch('?'));
+        assert_eq!(chars.read(), Ch('f'));
+        assert!(matches!(chars.read(), Eof));
 
         chars.unread(); // unread eof
         chars.unread(); // unread 'f'
@@ -437,18 +437,18 @@ mod test {
 
         chars.read_from_str("abc", Some(Encoding::UTF8));
         chars.reset();
-        assert_eq!(chars.read_char(), Ch('a'));
+        assert_eq!(chars.read(), Ch('a'));
         chars.unread();
-        assert_eq!(chars.read_char(), Ch('a'));
-        assert_eq!(chars.read_char(), Ch('b'));
+        assert_eq!(chars.read(), Ch('a'));
+        assert_eq!(chars.read(), Ch('b'));
         chars.unread();
-        assert_eq!(chars.read_char(), Ch('b'));
-        assert_eq!(chars.read_char(), Ch('c'));
+        assert_eq!(chars.read(), Ch('b'));
+        assert_eq!(chars.read(), Ch('c'));
         chars.unread();
-        assert_eq!(chars.read_char(), Ch('c'));
-        assert!(matches!(chars.read_char(), Eof));
+        assert_eq!(chars.read(), Ch('c'));
+        assert!(matches!(chars.read(), Eof));
         chars.unread();
-        assert!(matches!(chars.read_char(), Eof));
+        assert!(matches!(chars.read(), Eof));
     }
 
     #[test]
@@ -469,46 +469,46 @@ mod test {
         chars.read_from_str("abc", Some(Encoding::UTF8));
         assert_eq!(chars.length, 3);
         assert_eq!(chars.chars_left(), 3);
-        assert_eq!(chars.read_char(), Ch('a'));
-        assert_eq!(chars.read_char(), Ch('b'));
-        assert_eq!(chars.read_char(), Ch('c'));
-        assert!(matches!(chars.read_char(), Eof));
-        assert!(matches!(chars.read_char(), Eof));
-        assert!(matches!(chars.read_char(), Eof));
-        assert!(matches!(chars.read_char(), Eof));
+        assert_eq!(chars.read(), Ch('a'));
+        assert_eq!(chars.read(), Ch('b'));
+        assert_eq!(chars.read(), Ch('c'));
+        assert!(matches!(chars.read(), Eof));
+        assert!(matches!(chars.read(), Eof));
+        assert!(matches!(chars.read(), Eof));
+        assert!(matches!(chars.read(), Eof));
         chars.unread();
-        assert!(matches!(chars.read_char(), Eof));
-        chars.unread();
-        chars.unread();
-        assert!(!matches!(chars.read_char(), Eof));
-        assert!(matches!(chars.read_char(), Eof));
+        assert!(matches!(chars.read(), Eof));
         chars.unread();
         chars.unread();
-        assert!(!matches!(chars.read_char(), Eof));
+        assert!(!matches!(chars.read(), Eof));
+        assert!(matches!(chars.read(), Eof));
+        chars.unread();
+        chars.unread();
+        assert!(!matches!(chars.read(), Eof));
         chars.unread();
         chars.unread();
         chars.unread();
-        assert_eq!(chars.read_char(), Ch('a'));
+        assert_eq!(chars.read(), Ch('a'));
         chars.unread();
-        assert_eq!(chars.read_char(), Ch('a'));
-        chars.unread();
-        chars.unread();
-        assert_eq!(chars.read_char(), Ch('a'));
+        assert_eq!(chars.read(), Ch('a'));
         chars.unread();
         chars.unread();
+        assert_eq!(chars.read(), Ch('a'));
         chars.unread();
         chars.unread();
         chars.unread();
         chars.unread();
-        assert_eq!(chars.read_char(), Ch('a'));
-        assert_eq!(chars.read_char(), Ch('b'));
-        assert_eq!(chars.read_char(), Ch('c'));
-        assert!(matches!(chars.read_char(), Eof));
         chars.unread();
         chars.unread();
-        assert_eq!(chars.read_char(), Ch('c'));
-        assert!(matches!(chars.read_char(), Eof));
+        assert_eq!(chars.read(), Ch('a'));
+        assert_eq!(chars.read(), Ch('b'));
+        assert_eq!(chars.read(), Ch('c'));
+        assert!(matches!(chars.read(), Eof));
         chars.unread();
-        assert!(matches!(chars.read_char(), Eof));
+        chars.unread();
+        assert_eq!(chars.read(), Ch('c'));
+        assert!(matches!(chars.read(), Eof));
+        chars.unread();
+        assert!(matches!(chars.read(), Eof));
     }
 }
