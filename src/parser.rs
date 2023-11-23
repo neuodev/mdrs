@@ -1,10 +1,12 @@
 use crate::tokenizer::{Token, Tokenizer};
 
+#[derive(Debug)]
 pub struct Link {
     tokens: Vec<InlineToken>,
     href: String,
 }
 
+#[derive(Debug)]
 pub enum InlineToken {
     Text(String),
     Link(Link),
@@ -14,9 +16,37 @@ pub enum InlineToken {
     Image(String),
 }
 
+#[derive(Debug)]
+pub struct Paragraph(Vec<InlineToken>);
+
+#[derive(Debug)]
 pub struct Heading {
     level: usize,
-    text: String,
+    tokens: Vec<InlineToken>,
+}
+
+#[derive(Debug)]
+pub enum ListKind {
+    Ordered,
+    Unordered,
+}
+
+#[derive(Debug)]
+pub struct List {
+    kind: ListKind,
+    items: Vec<ListItem>,
+}
+
+pub type ListItem = Vec<Element>;
+
+#[derive(Debug)]
+pub struct Document(Vec<Element>);
+
+#[derive(Debug)]
+pub enum Element {
+    Heading(Heading),
+    Paragraph(Paragraph),
+    List(List),
 }
 
 pub struct Parser<'stream> {
@@ -37,8 +67,10 @@ impl<'stream> Parser<'stream> {
     ///     : Elements
     ///     ;
     /// ```
-    pub fn parse(&mut self) {
+    pub fn parse(&mut self) -> Document {
         self.lookahead = Some(self.tokenizer.consume());
+
+        Document(self.parse_elements())
     }
 
     /// ```txt
@@ -47,22 +79,74 @@ impl<'stream> Parser<'stream> {
     ///     | Elements Element -> Element Element Element ...
     ///     ;
     /// ```
-    pub fn parse_elements(&mut self) {}
+    pub fn parse_elements(&mut self) -> Vec<Element> {
+        let mut elements = Vec::new();
+
+        if let Some(token) = self.lookahead.clone() {
+            while !token.is_eof() {
+                elements.push(self.parse_element())
+            }
+        }
+
+        elements
+    }
 
     /// ```txt
     /// Element
     ///     : Heading
     ///     | Paragraph
+    ///     | List
     ///     ;
     /// ```
-    pub fn parse_element(&mut self) {}
+    pub fn parse_element(&mut self) -> Element {
+        if let Some(token) = self.lookahead.clone() {
+            if token.is_hash() {
+                return Element::Heading(self.parse_heading());
+            }
+        }
+
+        todo!()
+    }
 
     /// ```txt
     /// Heading
     ///     : <#-token> InlineTokens
     ///     ;
     /// ```
-    pub fn parse_heading(&mut self) {}
+    pub fn parse_heading(&mut self) -> Heading {
+        // consuem <#-token>
+        let level = self.eat().to_string().len();
+        let tokens = self.parse_inline_tokens();
+
+        Heading { level, tokens }
+    }
+
+    /// ```txt
+    /// List
+    ///     : ListItem ...
+    ///     ;
+    /// ```
+    pub fn parse_list(&mut self) -> List {
+        let mut items = Vec::new();
+        let mut kind = ListKind::Unordered;
+
+        List { kind, items }
+    }
+
+    pub fn parse_ordered_list(&mut self) {}
+
+    pub fn parse_unordered_list(&mut self) {}
+
+    /// ```txt
+    /// ListItem
+    ///     : <dash-token> Elements
+    ///     ;
+    /// ```
+    pub fn parse_list_item(&mut self) -> ListItem {
+        // consuem <dash-token>
+        self.eat();
+        self.parse_elements()
+    }
 
     /// ```txt
     /// InlineTokens
@@ -94,13 +178,14 @@ impl<'stream> Parser<'stream> {
     /// ```
     pub fn parse_inline_token(&mut self) -> InlineToken {
         if let Some(token) = self.lookahead.clone() {
+            println!("parse_inline_token: {:?}", token);
             return match token {
                 Token::ExclamationMark => todo!(),                    // image
                 Token::Backticks(1) => todo!(),                       // code
                 Token::Asterisk(1) | Token::Underscore(1) => todo!(), // italic
                 Token::Asterisk(2) => todo!(),                        // bold
                 Token::OpeningBracket => InlineToken::Link(self.parse_link()),
-                Token::String(_) => InlineToken::Text(self.parse_text()),
+                Token::String(_) | Token::Whitespace => InlineToken::Text(self.parse_text()),
                 _ => todo!(),
             };
         }
@@ -167,5 +252,14 @@ impl<'stream> Parser<'stream> {
         }
 
         todo!()
+    }
+
+    // todo: remove
+    pub fn consume_whitespace(&mut self) {
+        if let Some(token) = self.lookahead.clone() {
+            if token.is_whitespace() {
+                self.eat();
+            }
+        }
     }
 }
