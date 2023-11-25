@@ -11,13 +11,13 @@ pub enum Token {
     Dash(usize),
     Underscore(usize),
     Url(String),
+    Whitespace(String),
     OpeningParenthesis,
     ClosingParenthesis,
     OpeningBracket,
     ClosingBracket,
     AngleBracket,
     ExclamationMark,
-    Whitespace,
     EOF,
 }
 
@@ -51,7 +51,7 @@ impl Token {
     }
 
     pub fn is_whitespace(&self) -> bool {
-        matches!(self, Token::Whitespace)
+        matches!(self, Token::Whitespace(..))
     }
 
     pub fn is_eof(&self) -> bool {
@@ -96,13 +96,13 @@ impl ToString for Token {
             Token::Dash(n) => "-".repeat(*n),
             Token::Underscore(n) => "_".repeat(*n),
             Token::Url(s) => s.to_string(),
+            Token::Whitespace(s) => s.to_string(),
             Token::OpeningBracket => '['.to_string(),
             Token::ClosingBracket => ']'.to_string(),
             Token::OpeningParenthesis => '('.to_string(),
             Token::ClosingParenthesis => '('.to_string(),
             Token::AngleBracket => '>'.to_string(),
             Token::ExclamationMark => '!'.to_string(),
-            Token::Whitespace => ' '.to_string(),
             Token::EOF => String::new(),
         }
     }
@@ -137,17 +137,19 @@ impl<'a> Tokenizer<'a> {
     }
 
     pub fn consume_whitespace(&mut self) -> Token {
+        let mut whitespace = String::new();
         while self.chars.current().char().is_whitespace() {
-            self.chars.read();
+            whitespace.push(self.chars.read().char());
         }
 
-        Token::Whitespace
+        Token::Whitespace(whitespace)
     }
 
     pub fn consume_string(&mut self) -> Token {
         let mut string = String::new();
         loop {
-            let char = self.chars.current().char();
+            let current = self.chars.current();
+            let char = current.char();
 
             if char.is_whitespace()
                 || char == '['
@@ -158,6 +160,7 @@ impl<'a> Tokenizer<'a> {
                 || char == '*'
                 || char == '_'
                 || char == '!'
+                || current == Bytes::Eof
             {
                 break;
             }
@@ -222,22 +225,22 @@ mod test {
         let mut tokenizer = Tokenizer::new(&mut chars);
 
         let tokens = vec![
-            Token::Whitespace,
+            Token::Whitespace("\n        ".to_string()),
             // ### heading
             Token::Hash(3),
-            Token::Whitespace,
+            Token::Whitespace(" ".to_string()),
             Token::String("heading".to_string()),
-            Token::Whitespace,
+            Token::Whitespace("\n        ".to_string()),
             // **bold**
             Token::Asterisk(2),
             Token::String("bold".to_string()),
             Token::Asterisk(2),
-            Token::Whitespace,
+            Token::Whitespace("\n        ".to_string()),
             // _italic_
             Token::Underscore(1),
             Token::String("italic".to_string()),
             Token::Underscore(1),
-            Token::Whitespace,
+            Token::Whitespace("\n        ".to_string()),
             // [text](link)
             Token::OpeningBracket,
             Token::String("text".to_string()),
